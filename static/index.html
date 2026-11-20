@@ -60,26 +60,26 @@
         <h3 id="srcTitle">1. Фото</h3>
         <div class="drop" id="dropSrc"><span>Перетащи файл сюда или нажми</span><input type="file" id="src" accept="image/*"></div>
         <div id="animOpts">
-          <label>Что должно происходить в кадре</label>
+          <label id="promptLbl">Что должно происходить в кадре</label>
           <textarea id="prompt" placeholder="Например: человек слегка улыбается и поворачивает голову, камера медленно приближается"></textarea>
           <div class="row">
             <div><label>Формат</label>
               <select id="ratio"><option value="1280:720">Горизонтальное 16:9</option><option value="720:1280">Вертикальное 9:16</option><option value="960:960">Квадрат 1:1</option></select></div>
-            <div><label>Длительность</label>
+            <div id="durBox"><label>Длительность</label>
               <select id="duration"><option value="5">5 секунд</option><option value="10">10 секунд</option></select></div>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <h3>2. Твой звук (необязательно)</h3>
+        <h3 id="audioTitle">2. Твой звук (необязательно)</h3>
         <div class="drop" id="dropAudio"><span>mp3 / wav / m4a — перетащи или нажми</span><input type="file" id="audio" accept="audio/*"></div>
         <audio id="audioPrev" controls class="hide" style="width:100%;margin-top:10px"></audio>
         <label>Начать звук с секунды: <b id="offV">0</b></label>
         <input type="range" id="offset" min="0" max="120" step="0.5" value="0">
         <label>Громкость: <b id="volV">100%</b></label>
         <input type="range" id="volume" min="0" max="2" step="0.05" value="1">
-        <div class="hint">Если звук короче видео, остаток будет тишиной. Если длиннее, он обрежется.</div>
+        <div class="hint" id="audioHint">Если звук короче видео, остаток будет тишиной. Если длиннее, он обрежется.</div>
       </div>
     </div>
 
@@ -95,12 +95,23 @@
 
 <script>
 const $=s=>document.querySelector(s);
-let mode='animate';
+let mode='animate', provider='runway';
+
+// провайдер видео (heygen: фото говорит твоим звуком; runway: анимация + звук сверху)
+fetch('/api/config').then(r=>r.json()).then(c=>{provider=c.provider;applyMode();}).catch(()=>{});
+function applyMode(){
+  const hg=provider==='heygen'&&mode==='animate';
+  $('#durBox').classList.toggle('hide',hg);
+  $('#promptLbl').textContent=hg?'Движения и жесты (необязательно)':'Что должно происходить в кадре';
+  $('#prompt').placeholder=hg?'Например: говорит спокойно, слегка кивает, иногда улыбается':'Например: человек слегка улыбается и поворачивает голову, камера медленно приближается';
+  $('#audioTitle').textContent=hg?'2. Твой звук (обязательно)':'2. Твой звук (необязательно)';
+  $('#audioHint').textContent=hg?'Человек на фото будет говорить этим звуком (губы подстроятся). На фото должно быть чётко видно лицо. Длина видео = длина звука.':'Если звук короче видео, остаток будет тишиной. Если длиннее, он обрежется.';
+}
 
 // вкладки
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
-  mode=t.dataset.mode;
+  mode=t.dataset.mode; applyMode();
   $('#animOpts').classList.toggle('hide',mode!=='animate');
   $('#srcTitle').textContent=mode==='animate'?'1. Фото':'1. Твоё видео';
   $('#src').accept=mode==='animate'?'image/*':'video/*';
@@ -135,6 +146,7 @@ $('#form').onsubmit=async e=>{
   e.preventDefault();
   const src=$('#src').files[0];
   if(!src){alert(mode==='animate'?'Загрузи фото':'Загрузи видео');return;}
+  if((provider==='heygen'||mode==='audio_only')&&!$('#audio').files[0]){alert('Загрузи звуковую дорожку');return;}
   const fd=new FormData();
   fd.append('mode',mode);
   fd.append(mode==='animate'?'image':'video',src);

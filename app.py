@@ -32,7 +32,7 @@ app.config["MAX_CONTENT_LENGTH"] = 300 * 1024 * 1024  # 300 МБ на запро
 JOBS: dict[str, dict] = {}
 PROVIDER = os.environ.get("VIDEO_PROVIDER", "heygen").lower()
 RATIOS = {"1280:720": "16:9", "720:1280": "9:16", "960:960": "1:1"}
-HEYGEN = os.environ.get("sk_V2_hgu_kwTaxqDUO9M_12InUbvb4EnLbI6hHDOnimOFdbvG6bZp", "https://api.heygen.com")
+HEYGEN = os.environ.get("HEYGEN_API_BASE", "https://api.heygen.com")
 RUNWAY_MODEL = os.environ.get("RUNWAY_MODEL", "gen4_turbo")
 
 

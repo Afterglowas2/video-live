@@ -3,3 +3,4 @@ runwayml
 requests
 pillow
 python-dotenv
+gunicorn

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Оживи фото</title>
+<style>
+  :root{--bg:#0d0d12;--card:#17171f;--line:#2a2a36;--text:#ececf3;--mute:#8b8b9e;--acc:#7c5cff;--acc2:#ff5c9d}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,#1d1640 0,transparent 60%),var(--bg);color:var(--text);
+       font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+  .wrap{max-width:980px;margin:0 auto;padding:32px 16px 64px}
+  h1{font-size:34px;margin:0 0 6px;background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;color:transparent}
+  .sub{color:var(--mute);margin:0 0 24px}
+  .tabs{display:flex;gap:8px;margin-bottom:16px}
+  .tab{padding:10px 16px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--mute);cursor:pointer;font:inherit}
+  .tab.on{background:var(--acc);border-color:var(--acc);color:#fff}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+  .card h3{margin:0 0 10px;font-size:15px;color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+  .drop{border:2px dashed var(--line);border-radius:12px;min-height:170px;display:flex;align-items:center;justify-content:center;
+        text-align:center;color:var(--mute);cursor:pointer;overflow:hidden;position:relative;transition:.15s}
+  .drop.over{border-color:var(--acc);background:#7c5cff14}
+  .drop img,.drop video{max-width:100%;max-height:300px;display:block}
+  .drop input{display:none}
+  .hint{font-size:13px;color:var(--mute);margin-top:6px}
+  label{display:block;font-size:14px;margin:12px 0 4px;color:var(--mute)}
+  textarea,select,input[type=number]{width:100%;background:#0f0f16;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px;font:inherit}
+  textarea{min-height:86px;resize:vertical}
+  .row{display:flex;gap:12px}.row>*{flex:1}
+  input[type=range]{width:100%;accent-color:var(--acc)}
+  button.go{width:100%;margin-top:18px;padding:14px;border:0;border-radius:12px;font:600 17px inherit;color:#fff;cursor:pointer;
+            background:linear-gradient(90deg,var(--acc),var(--acc2))}
+  button.go:disabled{opacity:.5;cursor:wait}
+  #status{margin-top:16px;display:none}
+  .bar{height:6px;border-radius:6px;background:var(--line);overflow:hidden;margin-top:8px}
+  .bar i{display:block;height:100%;width:40%;background:linear-gradient(90deg,var(--acc),var(--acc2));animation:mv 1.2s infinite ease-in-out}
+  @keyframes mv{0%{margin-left:-40%}100%{margin-left:100%}}
+  .err{color:#ff7b7b}
+  #result{display:none;margin-top:20px}
+  #result video{width:100%;border-radius:12px;background:#000;max-height:70vh}
+  a.dl{display:inline-block;margin-top:10px;color:var(--acc);text-decoration:none;font-weight:600}
+  .hide{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Оживи фото</h1>
+  <p class="sub">Превращай фото в видео нейросетью и накладывай свой звук.</p>
+
+  <div class="tabs">
+    <button class="tab on" data-mode="animate">Фото → видео</button>
+    <button class="tab" data-mode="audio_only">Только звук на своё видео</button>
+  </div>
+
+  <form id="form">
+    <div class="grid">
+      <div class="card">
+        <h3 id="srcTitle">1. Фото</h3>
+        <div class="drop" id="dropSrc"><span>Перетащи файл сюда или нажми</span><input type="file" id="src" accept="image/*"></div>
+        <div id="animOpts">
+          <label>Что должно происходить в кадре</label>
+          <textarea id="prompt" placeholder="Например: человек слегка улыбается и поворачивает голову, камера медленно приближается"></textarea>
+          <div class="row">
+            <div><label>Формат</label>
+              <select id="ratio"><option value="1280:720">Горизонтальное 16:9</option><option value="720:1280">Вертикальное 9:16</option><option value="960:960">Квадрат 1:1</option></select></div>
+            <div><label>Длительность</label>
+              <select id="duration"><option value="5">5 секунд</option><option value="10">10 секунд</option></select></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>2. Твой звук (необязательно)</h3>
+        <div class="drop" id="dropAudio"><span>mp3 / wav / m4a — перетащи или нажми</span><input type="file" id="audio" accept="audio/*"></div>
+        <audio id="audioPrev" controls class="hide" style="width:100%;margin-top:10px"></audio>
+        <label>Начать звук с секунды: <b id="offV">0</b></label>
+        <input type="range" id="offset" min="0" max="120" step="0.5" value="0">
+        <label>Громкость: <b id="volV">100%</b></label>
+        <input type="range" id="volume" min="0" max="2" step="0.05" value="1">
+        <div class="hint">Если звук короче видео, остаток будет тишиной. Если длиннее, он обрежется.</div>
+      </div>
+    </div>
+
+    <button class="go" id="go" type="submit">Оживить</button>
+  </form>
+
+  <div id="status" class="card"><div id="msg">…</div><div class="bar" id="bar"><i></i></div></div>
+  <div id="result" class="card">
+    <video id="out" controls playsinline loop></video>
+    <a id="dl" class="dl" download>⬇ Скачать видео</a>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+let mode='animate';
+
+// вкладки
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
+  mode=t.dataset.mode;
+  $('#animOpts').classList.toggle('hide',mode!=='animate');
+  $('#srcTitle').textContent=mode==='animate'?'1. Фото':'1. Твоё видео';
+  $('#src').accept=mode==='animate'?'image/*':'video/*';
+  $('#go').textContent=mode==='animate'?'Оживить':'Наложить звук';
+  $('#src').value=''; resetDrop($('#dropSrc'),'Перетащи файл сюда или нажми');
+});
+
+function resetDrop(el,text){ el.querySelectorAll('img,video').forEach(n=>n.remove()); const s=el.querySelector('span'); s.style.display=''; s.textContent=text; }
+
+function bindDrop(drop,input,onFile){
+  drop.onclick=()=>input.click();
+  ['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over')}));
+  ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over')}));
+  drop.addEventListener('drop',ev=>{ if(ev.dataTransfer.files[0]){input.files=ev.dataTransfer.files; onFile(input.files[0]);} });
+  input.onchange=()=>input.files[0]&&onFile(input.files[0]);
+}
+bindDrop($('#dropSrc'),$('#src'),f=>{
+  const d=$('#dropSrc'); d.querySelectorAll('img,video').forEach(n=>n.remove());
+  const el=document.createElement(f.type.startsWith('video')?'video':'img'); el.src=URL.createObjectURL(f);
+  if(el.tagName==='VIDEO'){el.controls=true;el.muted=true;}
+  d.querySelector('span').style.display='none'; d.appendChild(el);
+});
+bindDrop($('#dropAudio'),$('#audio'),f=>{
+  $('#dropAudio span').textContent='🎵 '+f.name;
+  const a=$('#audioPrev'); a.src=URL.createObjectURL(f); a.classList.remove('hide');
+});
+$('#offset').oninput=e=>$('#offV').textContent=e.target.value;
+$('#volume').oninput=e=>$('#volV').textContent=Math.round(e.target.value*100)+'%';
+
+// отправка
+$('#form').onsubmit=async e=>{
+  e.preventDefault();
+  const src=$('#src').files[0];
+  if(!src){alert(mode==='animate'?'Загрузи фото':'Загрузи видео');return;}
+  const fd=new FormData();
+  fd.append('mode',mode);
+  fd.append(mode==='animate'?'image':'video',src);
+  if($('#audio').files[0]) fd.append('audio',$('#audio').files[0]);
+  fd.append('prompt',$('#prompt').value); fd.append('ratio',$('#ratio').value); fd.append('duration',$('#duration').value);
+  fd.append('offset',$('#offset').value); fd.append('volume',$('#volume').value);
+
+  $('#go').disabled=true; $('#result').style.display='none';
+  setStatus('Загружаю файлы…');
+  try{
+    const r=await fetch('/api/jobs',{method:'POST',body:fd}); const j=await r.json();
+    if(!r.ok) throw new Error(j.error||'Ошибка сервера');
+    poll(j.id);
+  }catch(err){ setStatus(err.message,true); $('#go').disabled=false; }
+};
+
+function setStatus(t,err=false,busy=true){
+  $('#status').style.display='block'; $('#msg').textContent=t; $('#msg').className=err?'err':'';
+  $('#bar').style.display=(err||!busy)?'none':'block';
+}
+async function poll(id){
+  try{
+    const j=await (await fetch('/api/jobs/'+id)).json();
+    if(j.status==='error'){ setStatus(j.message,true); $('#go').disabled=false; return; }
+    if(j.status==='done'){
+      setStatus('Готово ✔',false,false); $('#go').disabled=false;
+      $('#out').src=j.url; $('#dl').href=j.url+'?dl=1'; $('#result').style.display='block';
+      $('#result').scrollIntoView({behavior:'smooth'}); return;
+    }
+    setStatus(j.message);
+  }catch(e){ /* сеть мигнула — пробуем снова */ }
+  setTimeout(()=>poll(id),3000);
+}
+</script>
+</body>
+</html>
